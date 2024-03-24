@@ -50,18 +50,7 @@ static inline vector<int> ArraySum(std::vector<int> left, int target)
 
 int main(void)
 {
-	vector<int> vec;
-
-	long long b = 256;
-	for (auto it = 0LL; it < b; it++)
-	{
-		vec.push_back(it);
-	}
-
-	int a = 9;
-
-	auto ret = ArraySum({ 1, 2, 4, 8, 16 }, a);
-	auto ret1 = Hamming::ArraySum({ 1, 2, 4, 8, 16 }, a);
-
+	vector<int> left = { 1, 0, 2, 3, 1, 1, 1, 1 }, right = { 4, 1, 1, 2 };
+	auto ret = Hamming::MatrixMultiplication(left, right);
 	return 0;
 }
