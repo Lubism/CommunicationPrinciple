@@ -24,7 +24,11 @@ L"《西遊記》自问世以来，在中国及世界各地广为流傳，被翻译成多种语言。在中国，乃至
 
 };
 template<typename Ty>
-static inline void PrintVec(const std::vector<Ty>& vec) { for (auto& it : vec) std::cout << it << "\t"; std::cout << "\n"; }
+static inline void PrintVec(const char* text, const std::vector<Ty>& vec)
+{
+	printf("%s", text);
+	for (auto& it : vec) std::cout << it << "\t"; std::cout << "\n";
+}
 
 static inline vector<int> ArraySum(std::vector<int> left, int target)
 {
@@ -50,7 +54,6 @@ static inline vector<int> ArraySum(std::vector<int> left, int target)
 
 int main(void)
 {
-	vector<int> left = { 1, 0, 2, 3, 1, 1, 1, 1 }, right = { 4, 1, 1, 2 };
-	auto ret = Hamming::MatrixMultiplication(left, right);
+
 	return 0;
 }

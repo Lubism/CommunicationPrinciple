@@ -23,10 +23,13 @@
     <ClInclude Include="RLC.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
-    <ClInclude Include="Huffman.hpp">
+    <ClInclude Include="HuffmanOld.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Hamming.hpp">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Huffman.hpp">
       <Filter>头文件</Filter>
     </ClInclude>
   </ItemGroup>
