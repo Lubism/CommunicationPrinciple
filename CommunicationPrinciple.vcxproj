@@ -132,8 +132,10 @@
   <ItemGroup>
     <ClInclude Include="Hamming.hpp" />
     <ClInclude Include="Huffman.hpp" />
-    <ClInclude Include="HuffmanOld.hpp" />
     <ClInclude Include="RLC.hpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Hamming.md" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -4,8 +4,77 @@
 
 namespace CP
 {
+	/*
+	* Hamming bit stream coding and error correcting.
+	* All methods are static.
+	*/
 	class Hamming
 	{
+	public:
+		/*
+		* Correct the error in bit stream
+		* 
+		* @param
+		* message -> The bit stream to be corrected.
+		* 
+		* @param
+		* matrixH -> Error detection and correction matrix.
+		* 
+		* @return
+		* The corrected message, or nothing if arguments are invalid.
+		*/
+		template<typename Type>
+		static inline std::vector<Type> ErrorCorrect(const std::vector<Type>& message, const std::vector<Type>& matrixH);
+
+
+		/*
+		* Detect the location of error in the message
+		* 
+		* @param
+		* message -> The bit stream to be corrected.
+		* 
+		* @param
+		* matrixH -> Error detection and correction matrix.
+		* 
+		* @return
+		* The location of error.
+		* 
+		* @return
+		* It will return 0 if everything is fine or the error cannot be detected.
+		* It will return -1 if arguments are invalid.
+		*/
+		template<typename Type>
+		static inline Type ErrorDetect(const std::vector<Type>& message, const std::vector<Type>& matrixH);
+
+		/*
+		* Encoding the bit stream to hamming code
+		* 
+		* @param
+		* message -> The bit stream to be encoded.
+		* 
+		* @param
+		* matrixG -> Generating matrix for encoding the hamming code.
+		* 
+		* @return
+		* The encoded bit stream, or empty container if the arguments are invalid.
+		*/
+		template<typename Type>
+		static inline std::vector<Type> Encode(const std::vector<Type>& message, const std::vector<Type>& matrixG);
+
+		/*
+		* Decoding the bit stream to the original code
+		* 
+		* @param
+		* message -> The bit stream to be decoded.
+		* 
+		* @param
+		* matrixR -> Recover matrix for decoding the hamming code.
+		* 
+		* @return
+		* The decoded bit stream, or empty container if the arguments are invalid.
+		*/
+		template<typename Type>
+		static inline std::vector<Type> Decode(const std::vector<Type>& message, const std::vector<Type>& matrixR);
 	public:
 		template<typename Type>
 		static inline std::vector<Type> ErrorCorrect(const std::vector<Type>& message, const Type& bitsParity);
@@ -41,7 +110,7 @@ namespace CP
 		static inline std::vector<Type> MatrixMulti(const std::vector<Type>& left, const std::vector<Type>& right);
 
 		template<typename Type>
-		static inline std::vector<Type> ArraySum(std::vector<Type> left, Type target);
+		static inline std::vector<Type> ArraySum(const std::vector<Type>& left, Type target);
 
 		template<typename Type>
 		static inline bool InList(const std::vector<Type>& left, const Type& target);
@@ -63,10 +132,63 @@ namespace CP
 
 		template<typename Type>
 		static inline bool IsTwoPower(Type num);
-	private:
+	protected:
 		template<typename Type>
 		static inline std::vector<Type> Mod2Multi(const std::vector<Type>& left, const std::vector<Type>& right);
+
+		template<typename Type>
+		static inline std::vector<Type> DynamicProgramArraySum(const std::vector<Type>& left, Type target);
+
+		template<typename Type>
+		static std::vector<Type> RecursiveArraySum(const std::vector<Type>& left, Type target);
 	};
+
+	template<typename Type>
+	inline std::vector<Type> Hamming::ErrorCorrect(const std::vector<Type>& message, const std::vector<Type>& matrixH)
+	{
+		Type location = Hamming::ErrorDetect(message, matrixH);
+		if (location <= Type()) return message;
+
+		std::vector<Type> result(message.begin(), message.end());
+		result.at(location - 1) ^= Type(1);
+		return result;
+	}
+
+	template<typename Type>
+	inline Type Hamming::ErrorDetect(const std::vector<Type>& message, const std::vector<Type>& matrixH)
+	{
+		std::vector<Type> errList = Hamming::Mod2Multi(matrixH, message);
+		if (errList.empty()) return Type(-1);
+
+		Type errIndex = Hamming::CvtBinToDec(errList) - 1;
+		if (errIndex < Type()) return Type();
+		size_t bitsTotal = message.size();
+		std::vector<Type> temp;
+
+		Type bitsParity = static_cast<Type>(matrixH.size()) /
+			static_cast<Type>(bitsTotal);
+		temp.reserve(bitsParity + 2);
+		Type result = Type();
+
+		for (Type it = Type(); it < bitsParity; ++it) {
+			temp.push_back(matrixH.at(errIndex + it * bitsTotal));
+		}
+
+		result = Hamming::CvtBinToDec(temp);
+		return result;
+	}
+
+	template<typename Type>
+	inline std::vector<Type> Hamming::Encode(const std::vector<Type>& message, const std::vector<Type>& matrixG)
+	{
+		return Hamming::Mod2Multi(matrixG, message);
+	}
+
+	template<typename Type>
+	inline std::vector<Type> Hamming::Decode(const std::vector<Type>& message, const std::vector<Type>& matrixR)
+	{
+		return Hamming::Mod2Multi(matrixR, message);
+	}
 
 	template<typename Type>
 	inline std::vector<Type> Hamming::ErrorCorrect(const std::vector<Type>& message, const Type& bitsParity)
@@ -82,20 +204,21 @@ namespace CP
 	template<typename Type>
 	inline Type Hamming::ErrorDetect(const std::vector<Type>& message, const Type& bitsParity)
 	{
-		std::vector<Type> Ht = Hamming::MatrixHt(bitsParity);
-		std::vector<Type> H(Ht.begin(), Ht.end());
+		std::vector<Type> H = Hamming::MatrixH(bitsParity);
+
+		std::vector<Type> errList = Hamming::Mod2Multi(H, message);
+		if (errList.empty()) return Type(-1);
+
+		Type errIndex = Hamming::CvtBinToDec(errList) - 1;
+		if (errIndex < Type()) return Type();
 		std::vector<Type> temp;
 
 		Type bitsTotal = Hamming::CvtParityToData(bitsParity) + bitsParity;
-		Type errIndex = Type(), result = Type();
 		temp.reserve(bitsParity);
-
-		std::vector<Type> errList = Hamming::Mod2Multi(H, message);
-		errIndex = Hamming::CvtBinToDec(errList) - 1;
-		if (errIndex < Type()) return Type(-1);
+		Type result = Type();
 
 		for (Type it = Type(); it < bitsParity; ++it) {
-			temp.push_back(Ht.at(errIndex + it * bitsTotal));
+			temp.push_back(H.at(errIndex + it * bitsTotal));
 		}
 
 		result = Hamming::CvtBinToDec(temp);
@@ -304,26 +427,16 @@ namespace CP
 	}
 
 	template<typename Type>
-	inline std::vector<Type> Hamming::ArraySum(std::vector<Type> left, Type target)
+	inline std::vector<Type> Hamming::ArraySum(const std::vector<Type>& left, Type target)
 	{
-		auto sum = [](const std::vector<Type>& vec) {Type result = Type(); for (const Type& it : vec) result += it; return result; };
-		if (target <= 0) return std::vector<Type>();
-		std::vector<Type> result;
-		size_t index = 0;
-		
-		for (const Type& it : left)
-		{
-			std::vector<Type> temp = Hamming::ArraySum({ left.begin() + index + 1, left.end() }, target - it);
-			result.insert(result.end(), temp.begin(), temp.end());
-			if ((sum(result) + it) == target) {
-				result.push_back(it);
+		auto it = left.begin();
+
+		for (; it != left.end(); ++it)
+			if (target <= *it)
 				break;
-			}
 
-			++index;
-		}
-
-		return result;
+		std::vector<Type> temp(left.begin(), it);
+		return Hamming::RecursiveArraySum(temp, target);
 	}
 
 	template<typename Type>
@@ -409,6 +522,75 @@ namespace CP
 	{
 		std::vector<Type> result = Hamming::MatrixMulti(left, right);
 		for (Type& it : result) it %= Type(2);
+		return result;
+	}
+
+	template<typename Type>
+	inline std::vector<Type> Hamming::DynamicProgramArraySum(const std::vector<Type>& left, Type target)
+	{
+		size_t length = left.size();
+		std::vector<std::vector<bool> > subSet(length + 1,
+			std::vector<bool>(target + 1));
+
+		for (size_t it = 0; it <= length; ++it)
+			subSet[it][0] = true;
+
+		for (Type it = Type(1); it <= target; ++it)
+			subSet[0][it] = false;
+
+		for (size_t row = 1; row <= length; ++row)
+		{
+			for (Type column = Type(1); column <= target; ++column)
+			{
+				if (column >= left.at(row - 1))
+					subSet[row][column] = subSet[row - 1][column] || subSet[row - 1][column - left.at(row - 1)];
+				else
+					subSet[row][column] = subSet[row - 1][column];
+			}
+		}
+
+		std::vector<Type> result;
+		bool failState = true;
+		Type temp = Type();
+
+		while (target > temp) {
+			failState = true;
+
+			for (auto it = 1; it <= length; ++it) {
+				if (subSet[it][target] == true) {
+					result.push_back(left.at(it - 1));
+					target -= left.at(it - 1);
+					failState = false;
+					break;
+				}
+			}
+
+			if (failState) break;
+		}
+
+		return result;
+	}
+
+	template<typename Type>
+	std::vector<Type> Hamming::RecursiveArraySum(const std::vector<Type>& left, Type target)
+	{
+		auto sum = [](const std::vector<Type>& vec) {Type result = Type(); for (const Type& it : vec) result += it; return result; };
+		if (left.empty() || target <= 0) return std::vector<Type>();
+		std::vector<Type> result;
+		size_t index = 0;
+
+		for (const Type& it : left)
+		{
+			std::vector<Type> temp = Hamming::RecursiveArraySum({ left.begin() + index + 1, left.end() }, target - it);
+			result.insert(result.end(), temp.begin(), temp.end());
+			if ((sum(result) + it) == target) {
+				result.push_back(it);
+				break;
+			}
+
+			++index;
+		}
+
 		return result;
 	}
 }

@@ -23,37 +23,36 @@ L"因《西遊記》的傳頌，明清之際吳元泰、吳政泰、余象斗等因而又據佛、道兩教之有關戲
 L"《西遊記》自问世以来，在中国及世界各地广为流傳，被翻译成多种语言。在中国，乃至亚洲部分地区《西遊記》家喻户晓，其中孙悟空、唐僧、猪八戒、沙僧等人物和「大闹天宫」、「三打白骨精」、「孙悟空三借芭蕉扇」等故事尤其為人熟悉。幾百年來，西遊記被改编成各种地方戏曲、电影、电视剧、动画片、漫畫等，版本繁多。"
 
 };
-template<typename Ty>
-static inline void PrintVec(const char* text, const std::vector<Ty>& vec)
+
+template<typename Type>
+inline std::ostream& operator<<(std::ostream& out, const std::vector<Type>& vec)
 {
-	printf("%s", text);
-	for (auto& it : vec) std::cout << it << "\t"; std::cout << "\n";
-}
-
-static inline vector<int> ArraySum(std::vector<int> left, int target)
-{
-	auto sum = [&](const vector<int>& vec) {int result = 0; for (auto& it : vec) result += it; return result; };
-	if (target <= 0) return vector<int>();
-	vector<int> result;
-	size_t index = 0;
-
-	for (auto& it : left)
-	{
-		auto temp = ArraySum({ left.begin() + index + 1, left.end() }, target - it);
-		result.insert(result.end(), temp.begin(), temp.end());
-		if ((sum(result) + it) == target) {
-			result.push_back(it);
-			break;
-		}
-
-		++index;
-	}
-
-	return result;
+	for (const Type& it : vec)
+		out << it << "\t";
+	return out;
 }
 
 int main(void)
 {
+	vector<int> test = { 1, 1, 0, 0 };
+	auto G = Hamming::MatrixG(3);
+	auto R = Hamming::MatrixR(3);
+	auto H = Hamming::MatrixH(3);
+
+	auto encoded = Hamming::Encode(test, G);
+	vector<int> error(encoded.begin(),
+		encoded.end());
+
+	error[3] ^= 1;
+
+	auto correct = Hamming::ErrorCorrect(error, H);
+	auto decoded = Hamming::Decode(correct, R);
+
+	cout << "Original:  " << test << "\n\n";
+	cout << "Encoded:   " << encoded << "\n\n";
+	cout << "Error:     " << error << "\n\n";
+	cout << "Corrected: " << correct << "\n\n";
+	cout << "Decoded:   " << decoded << "\n\n";
 
 	return 0;
 }
