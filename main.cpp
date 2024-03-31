@@ -1,58 +1,186 @@
-#include<unordered_map>
-#include<algorithm>
-#include<iostream>
-#include<vector>
-#include<string>
-#include<queue>
-#include<set>
-
 #include"Hamming.hpp"
 #include"Huffman.hpp"
-#include"RLC.hpp"
+#include<string>
 
 using namespace std;
 using namespace CP;
 
-vector<wstring> message = 
+// Sending the encoded message to outside
+class Sender
 {
+public:
+	inline Sender() { MatrixG = Hamming::MatrixG(5); }
+	inline ~Sender() {}
+public:
+	inline void importText(const std::wstring& input) { Text.assign(input); }
 
-L"《西遊記》，又稱《西遊釋厄傳》，是中國古代第一部浪漫主义章回体长篇神魔小说，中國《四大名著》之一、《四大奇書》之一。成书于16世纪明朝中叶，一般认为作者是明朝的吳承恩。書中讲述唐三藏與徒弟孫悟空、豬八戒和沙悟淨等師徒四人前往西天取经的故事，表现了惩恶扬善的古老主题，也有观点认为西游记是暗諷权力场的諷刺小说。",
+	inline std::vector<int> sendMessage(const std::unordered_map<std::wstring, std::vector<int> >& codeDict) const
+	{
+		if (Text.empty() || codeDict.empty()) return std::vector<int>();
+		std::vector<int> result;
 
-L"因《西遊記》的傳頌，明清之際吳元泰、吳政泰、余象斗等因而又據佛、道兩教之有關戲曲雜劇和神話傳說，撰寫《東遊記》、《南遊記》和《北遊記》等三遊記，再加上楊志和之另本《西遊記》，合稱《四遊記》。",
+		auto bitsFill = this->encodeMessage(codeDict, result);
+		auto temp = this->cvtDecToBin(bitsFill);
 
-L"《西遊記》自问世以来，在中国及世界各地广为流傳，被翻译成多种语言。在中国，乃至亚洲部分地区《西遊記》家喻户晓，其中孙悟空、唐僧、猪八戒、沙僧等人物和「大闹天宫」、「三打白骨精」、「孙悟空三借芭蕉扇」等故事尤其為人熟悉。幾百年來，西遊記被改编成各种地方戏曲、电影、电视剧、动画片、漫畫等，版本繁多。"
+		result.insert(result.end(), temp.begin(), temp.end());
+		return result;
+	}
+private:
+	inline int encodeMessage(const std::unordered_map<std::wstring, std::vector<int> >& codeDict,
+		std::vector<int>& result) const
+	{
+		auto huffman = Huffman::Encode(Text, codeDict);
+		size_t size = huffman.size();
+		std::vector<int> hamming;
+		std::vector<int> encoded;
+
+		size_t capacity = (size / 26ULL + size % 26ULL) * 31ULL;
+		result.reserve(capacity);
+
+		auto itBefore = huffman.begin();
+		int elemCount = 0;
+
+		for (auto it = huffman.begin(); it != huffman.end(); ++it) {
+			if (elemCount >= 26) { // Split the message and do hamming coding.
+				hamming.assign(itBefore, it);
+				encoded = Hamming::Encode(hamming, MatrixG);
+				result.insert(result.end(), encoded.begin(), encoded.end());
+
+				elemCount = 0;
+				itBefore = it;
+			}
+
+			++elemCount;
+		}
+
+		// Padding the last part of message, and append the length of padding.
+
+		hamming.assign(itBefore, huffman.end());
+		while (hamming.size() < 26) hamming.push_back(0);
+
+		encoded = Hamming::Encode(hamming, MatrixG);
+		result.insert(result.end(), encoded.begin(), encoded.end());
+
+		return 26 - elemCount;
+	}
+
+	inline std::vector<int> cvtDecToBin(int bitsFill) const
+	{
+		int currentIndex = 24 - static_cast<int>(std::log2(bitsFill));
+		std::vector<int> result(26, 0);
+
+		while (bitsFill > 0) {
+			result.at(currentIndex) = bitsFill % 2;
+			++currentIndex;
+			bitsFill /= 2;
+		}
+
+		return Hamming::Encode(result, MatrixG);
+	}
+private:
+	std::vector<int> MatrixG;
+	std::wstring Text;
+};
+
+class Receiver
+{
+public:
+	inline Receiver()
+	{
+		MatrixH = Hamming::MatrixH(5);
+		MatrixR = Hamming::MatrixG(5);
+	}
+	inline ~Receiver() {}
+public:
+	inline void importMessage(const std::vector<int>& input) { Message = input; }
+
+	inline std::wstring receiveMessage(const std::unordered_map<std::wstring, std::vector<int> >& codeDict) const
+	{
+		std::wstring result;
+		auto temp = this->decodingMessage(Message);
+
+		this->refusePadding(temp);
+
+		result = Huffman::Decode(temp, codeDict);
+		return result;
+	}
+private:
+	inline std::vector<int> decodingMessage(const std::vector<int>& message) const
+	{
+		int elemCount = 0;
+		std::vector<int> result;
+		std::vector<int> decoded;
+		std::vector<int> hamming;
+		std::vector<int> recovered;
+		size_t size = message.size();
+		size_t capacity = (size / 31ULL + size % 31ULL) * 26ULL;
+
+		hamming.reserve(capacity);
+		auto itBefore = message.begin();
+		for (auto it = message.begin(); it != message.end(); ++it) {
+			if (elemCount >= 31) {
+				hamming.assign(itBefore, it);
+				recovered = Hamming::ErrorCorrect(hamming, MatrixH);
+
+				decoded = Hamming::Decode(hamming, MatrixR);
+				result.insert(result.end(), decoded.begin(), decoded.end());
+			}
+
+			++elemCount;
+		}
+
+		return result;
+	}
+
+	inline std::vector<int>& refusePadding(std::vector<int>& result) const
+	{
+		std::vector<int> temp(result.end() - 31, result.end());
+		int bitsRemove = this->cvtBinToDec(temp) + 26;
+
+		while (bitsRemove > 0) {
+			result.erase(result.end());
+			--bitsRemove;
+		}
+
+		return result;
+	}
+
+	inline int cvtBinToDec(const std::vector<int>& input) const
+	{
+		int result = 0;
+		int temp = 1;
+
+		for (auto it = input.rbegin(); it != input.rend(); ++it) {
+			result = result + temp * (*it);
+			temp <<= 1;
+		}
+
+		return result;
+	}
+private:
+	std::vector<int> MatrixH;
+	std::vector<int> MatrixR;
+	std::vector<int> Message;
+};
+
+class ChapterFile
+{
+public:
+	inline ChapterFile() {}
+	inline ~ChapterFile() {}
+public:
 
 };
 
-template<typename Type>
-inline std::ostream& operator<<(std::ostream& out, const std::vector<Type>& vec)
-{
-	for (const Type& it : vec)
-		out << it << "\t";
-	return out;
-}
-
 int main(void)
 {
-	vector<int> test = { 1, 1, 0, 0 };
-	auto G = Hamming::MatrixG(3);
-	auto R = Hamming::MatrixR(3);
-	auto H = Hamming::MatrixH(3);
+	std::vector<int> temp;
+	int target = 13;
 
-	auto encoded = Hamming::Encode(test, G);
-	vector<int> error(encoded.begin(),
-		encoded.end());
-
-	error[3] ^= 1;
-
-	auto correct = Hamming::ErrorCorrect(error, H);
-	auto decoded = Hamming::Decode(correct, R);
-
-	cout << "Original:  " << test << "\n\n";
-	cout << "Encoded:   " << encoded << "\n\n";
-	cout << "Error:     " << error << "\n\n";
-	cout << "Corrected: " << correct << "\n\n";
-	cout << "Decoded:   " << decoded << "\n\n";
+	while (target > 0) {
+		temp.push_back(target % 2);
+		target /= 2;
+	}
 
 	return 0;
 }

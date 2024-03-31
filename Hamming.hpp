@@ -4,75 +4,18 @@
 
 namespace CP
 {
-	/*
-	* Hamming bit stream coding and error correcting.
-	* All methods are static.
-	*/
 	class Hamming
 	{
 	public:
-		/*
-		* Correct the error in bit stream
-		* 
-		* @param
-		* message -> The bit stream to be corrected.
-		* 
-		* @param
-		* matrixH -> Error detection and correction matrix.
-		* 
-		* @return
-		* The corrected message, or nothing if arguments are invalid.
-		*/
 		template<typename Type>
 		static inline std::vector<Type> ErrorCorrect(const std::vector<Type>& message, const std::vector<Type>& matrixH);
 
-
-		/*
-		* Detect the location of error in the message
-		* 
-		* @param
-		* message -> The bit stream to be corrected.
-		* 
-		* @param
-		* matrixH -> Error detection and correction matrix.
-		* 
-		* @return
-		* The location of error.
-		* 
-		* @return
-		* It will return 0 if everything is fine or the error cannot be detected.
-		* It will return -1 if arguments are invalid.
-		*/
 		template<typename Type>
 		static inline Type ErrorDetect(const std::vector<Type>& message, const std::vector<Type>& matrixH);
 
-		/*
-		* Encoding the bit stream to hamming code
-		* 
-		* @param
-		* message -> The bit stream to be encoded.
-		* 
-		* @param
-		* matrixG -> Generating matrix for encoding the hamming code.
-		* 
-		* @return
-		* The encoded bit stream, or empty container if the arguments are invalid.
-		*/
 		template<typename Type>
 		static inline std::vector<Type> Encode(const std::vector<Type>& message, const std::vector<Type>& matrixG);
 
-		/*
-		* Decoding the bit stream to the original code
-		* 
-		* @param
-		* message -> The bit stream to be decoded.
-		* 
-		* @param
-		* matrixR -> Recover matrix for decoding the hamming code.
-		* 
-		* @return
-		* The decoded bit stream, or empty container if the arguments are invalid.
-		*/
 		template<typename Type>
 		static inline std::vector<Type> Decode(const std::vector<Type>& message, const std::vector<Type>& matrixR);
 	public:
@@ -88,9 +31,6 @@ namespace CP
 		template<typename Type>
 		static inline std::vector<Type> Decode(const std::vector<Type>& message, const Type& bitsParity);
 	public:
-		template<typename Type>
-		static inline std::vector<Type> MatrixHt(const Type& bitsParity);
-
 		template<typename Type>
 		static inline std::vector<Type> MatrixH(const Type& bitsParity);
 
@@ -135,9 +75,6 @@ namespace CP
 	protected:
 		template<typename Type>
 		static inline std::vector<Type> Mod2Multi(const std::vector<Type>& left, const std::vector<Type>& right);
-
-		template<typename Type>
-		static inline std::vector<Type> DynamicProgramArraySum(const std::vector<Type>& left, Type target);
 
 		template<typename Type>
 		static std::vector<Type> RecursiveArraySum(const std::vector<Type>& left, Type target);
@@ -237,12 +174,6 @@ namespace CP
 	{
 		std::vector<Type> R = Hamming::MatrixR(bitsParity);
 		return Hamming::Mod2Multi(R, message);
-	}
-
-	template<typename Type>
-	inline std::vector<Type> Hamming::MatrixHt(const Type& bitsParity)
-	{
-		return Hamming::MatrixH(bitsParity);
 	}
 
 	template<typename Type>
@@ -522,52 +453,6 @@ namespace CP
 	{
 		std::vector<Type> result = Hamming::MatrixMulti(left, right);
 		for (Type& it : result) it %= Type(2);
-		return result;
-	}
-
-	template<typename Type>
-	inline std::vector<Type> Hamming::DynamicProgramArraySum(const std::vector<Type>& left, Type target)
-	{
-		size_t length = left.size();
-		std::vector<std::vector<bool> > subSet(length + 1,
-			std::vector<bool>(target + 1));
-
-		for (size_t it = 0; it <= length; ++it)
-			subSet[it][0] = true;
-
-		for (Type it = Type(1); it <= target; ++it)
-			subSet[0][it] = false;
-
-		for (size_t row = 1; row <= length; ++row)
-		{
-			for (Type column = Type(1); column <= target; ++column)
-			{
-				if (column >= left.at(row - 1))
-					subSet[row][column] = subSet[row - 1][column] || subSet[row - 1][column - left.at(row - 1)];
-				else
-					subSet[row][column] = subSet[row - 1][column];
-			}
-		}
-
-		std::vector<Type> result;
-		bool failState = true;
-		Type temp = Type();
-
-		while (target > temp) {
-			failState = true;
-
-			for (auto it = 1; it <= length; ++it) {
-				if (subSet[it][target] == true) {
-					result.push_back(left.at(it - 1));
-					target -= left.at(it - 1);
-					failState = false;
-					break;
-				}
-			}
-
-			if (failState) break;
-		}
-
 		return result;
 	}
 
