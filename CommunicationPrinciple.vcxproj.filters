@@ -34,5 +34,6 @@
     <None Include="Hamming.md" />
     <None Include="Huffman.md" />
     <None Include="README.md" />
+    <None Include="RLC.md" />
   </ItemGroup>
 </Project>
